@@ -7,7 +7,7 @@
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
-      font-family: system-ui, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       background-color: #121212;
       color: #e0e0e0;
       margin: 0;
@@ -16,7 +16,7 @@
       flex-direction: column;
       align-items: center;
     }
-    h2 { margin: 8px 0; color: #fff; font-size: 1.2rem; }
+    h2 { margin: 8px 0; color: #fff; font-size: 1.2rem; text-align: center; }
     #reader {
       width: 100%;
       max-width: 400px;
@@ -24,6 +24,7 @@
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       background: #000;
+      min-height: 250px;
     }
     .card {
       margin-top: 16px;
@@ -37,11 +38,12 @@
       text-align: center;
     }
     .barcode-badge {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       background: #2a2a2a;
-      padding: 4px 10px;
+      padding: 6px 12px;
       border-radius: 12px;
-      color: #aaa;
+      color: #00e676;
+      font-weight: bold;
       display: inline-block;
       margin-bottom: 6px;
     }
@@ -49,7 +51,8 @@
       font-size: 1.2rem;
       font-weight: bold;
       color: #ffffff;
-      margin: 6px 0;
+      margin: 8px 0;
+      min-height: 1.4em;
     }
     .metrics-grid {
       display: grid;
@@ -67,17 +70,17 @@
     .metric-value { font-size: 1.3rem; font-weight: bold; margin-top: 4px; }
     .price { color: #2ecc71; }
     .stock { color: #3498db; }
-    .status-bar { margin-top: 10px; font-size: 0.8rem; color: #777; }
+    .status-bar { margin-top: 12px; font-size: 0.8rem; color: #aaa; text-align: center; }
   </style>
 </head>
 <body>
 
-  <h2>Librería Cristiana Logos - Lector</h2>
+  <h2>Librería Cristiana Logos</h2>
   <div id="reader"></div>
 
   <div class="card">
-    <div class="barcode-badge" id="codigo-display">Esperando escaneo...</div>
-    <div class="product-title" id="producto-display">Apunta al código de barras</div>
+    <div class="barcode-badge" id="codigo-display">Esperando lectura...</div>
+    <div class="product-title" id="producto-display">Apunta la cámara al código</div>
     
     <div class="metrics-grid">
       <div class="metric-box">
@@ -91,36 +94,37 @@
     </div>
   </div>
 
-  <div class="status-bar" id="status">Sincronizando inventario...</div>
+  <div class="status-bar" id="status">Cargando base de datos...</div>
 
   <script>
     let inventarioDB = {};
     let bloqueado = false;
 
-    // Tu URL de Google Apps Script configurada
-    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxil_zQW3OoD7zxcs-ARNCSxEN_SXsMK71DB9gR-T1LoBAcQdkXQtTDuTnuOtFtyv7P/exec";
+    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbzGFWnbYe1n2vEn8qWsPvUqRjfBk1ilp2O0T4EfHwI7RbMrK7BdhLVxclt754UiEfpa/exec";
 
     async function cargarInventario() {
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Inventario sincronizado en vivo";
+        document.getElementById('status').innerText = "✓ Base de datos sincronizada";
       } catch (err) {
-        document.getElementById('status').innerText = "⚠️ Error cargando inventario (Modo offline)";
+        document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
     }
 
     function playBeep() {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.08);
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.1);
+      } catch(e) {}
     }
 
     function onScanSuccess(codigo) {
@@ -137,43 +141,28 @@
         document.getElementById('precio-display').innerText = `$${item.precio.toLocaleString('es-CO')}`;
         document.getElementById('stock-display').innerText = item.stock;
       } else {
-        document.getElementById('producto-display').innerText = "❌ No coincide con la base";
+        document.getElementById('producto-display').innerText = "❌ No coincide con la base (INVENT)";
         document.getElementById('precio-display').innerText = "-";
         document.getElementById('stock-display').innerText = "-";
       }
 
-      setTimeout(() => { bloqueado = false; }, 2000); 
+      // Evitamos lecturas duplicadas continuas por 1.5 segundos
+      setTimeout(() => { bloqueado = false; }, 1500); 
     }
 
-    const scanner = new Html5Qrcode("reader");
-    
-    const config = { 
-      fps: 30, 
-      qrbox: { width: 300, height: 160 },
-      aspectRatio: 1.0,
-      formatsToSupport: [ 
-        Html5QrcodeSupportedFormats.EAN_13, 
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E
-      ]
-    };
+    // Inicialización de alta sensibilidad
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader",
+      { 
+        fps: 25,
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+      },
+      /* verbose= */ false
+    );
 
-    scanner.start(
-      { facingMode: "environment" }, 
-      config, 
-      onScanSuccess
-    ).then(() => {
-      const track = scanner.getRunningTrack();
-      if (track && typeof track.getCapabilities === 'function') {
-        const capabilities = track.getCapabilities();
-        if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-          track.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
-        }
-      }
-    }).catch(err => {
-      document.getElementById('status').innerText = "Error de cámara: Asegure permisos HTTPS";
+    html5QrcodeScanner.render(onScanSuccess, (errorMessage) => {
+      // Ignora errores de cuadro no leído en tiempo real
     });
 
     cargarInventario();
