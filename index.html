@@ -97,8 +97,8 @@
     let inventarioDB = {};
     let bloqueado = false;
 
-    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
-    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbw5xy_O4rA_eYFeIoXhWDIU6dmqkomcMQEE-jy1ZaT6dvCCD0Dar3sL1jSGg3IepZ6z/exec";
+    // Tu URL de Google Apps Script configurada
+    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbylFyP0B03zB1lKwWAMuho26FP7wBJL__dmjRrMAfYIFsY5KHVGp5HWG9qWrOc_LQu9/exec";
 
     async function cargarInventario() {
       try {
@@ -128,9 +128,11 @@
       bloqueado = true;
       playBeep();
 
-      // Limpiar código leído (por si trae espacios o formatos extraños)
-      codigo = codigo.trim();
-      document.getElementById('codigo-display').innerText = `Cód: ${codigo}`;
+      // Limpieza básica del código leído
+      codigo = String(codigo).trim();
+      
+      // Diagnóstico visual en pantalla: muestra exactamente lo que capturó la cámara
+      document.getElementById('codigo-display').innerText = `LEÍDO: [${codigo}]`;
 
       const item = inventarioDB[codigo];
       if (item) {
@@ -138,12 +140,12 @@
         document.getElementById('precio-display').innerText = `$${item.precio.toLocaleString('es-CO')}`;
         document.getElementById('stock-display').innerText = item.stock;
       } else {
-        document.getElementById('producto-display').innerText = "❌ Producto no encontrado";
+        document.getElementById('producto-display').innerText = "❌ No coincide con la base";
         document.getElementById('precio-display').innerText = "-";
         document.getElementById('stock-display').innerText = "-";
       }
 
-      setTimeout(() => { bloqueado = false; }, 1500); // Debounce de 1.5s
+      setTimeout(() => { bloqueado = false; }, 2000); // Debounce de 2s
     }
 
     const scanner = new Html5Qrcode("reader");
@@ -161,7 +163,7 @@
       }, 
       onScanSuccess
     ).catch(err => {
-      document.getElementById('status').innerText = "Error de cámara: Asegure permisos HTTPS o localhost";
+      document.getElementById('status').innerText = "Error de cámara: Asegure permisos HTTPS";
     });
 
     cargarInventario();
