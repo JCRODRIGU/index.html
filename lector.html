@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lector Móvil - Logos POS</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: #121212;
+      color: #e0e0e0;
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 { margin: 8px 0; color: #fff; font-size: 1.2rem; }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      background: #000;
+    }
+    .card {
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+      background: #1e1e1e;
+      border-radius: 12px;
+      padding: 16px;
+      box-sizing: border-box;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    .barcode-badge {
+      font-size: 0.85rem;
+      background: #2a2a2a;
+      padding: 4px 10px;
+      border-radius: 12px;
+      color: #aaa;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    .product-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #ffffff;
+      margin: 6px 0;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .metric-box {
+      background: #252525;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #383838;
+    }
+    .metric-label { font-size: 0.75rem; color: #888; font-weight: bold; }
+    .metric-value { font-size: 1.3rem; font-weight: bold; margin-top: 4px; }
+    .price { color: #2ecc71; }
+    .stock { color: #3498db; }
+    .status-bar { margin-top: 10px; font-size: 0.8rem; color: #777; }
+  </style>
+</head>
+<body>
+
+  <h2>Librería Cristiana Logos - Lector</h2>
+  <div id="reader"></div>
+
+  <div class="card">
+    <div class="barcode-badge" id="codigo-display">Esperando escaneo...</div>
+    <div class="product-title" id="producto-display">Apunta al código de barras</div>
+    
+    <div class="metrics-grid">
+      <div class="metric-box">
+        <div class="metric-label">PRECIO PÚBLICO</div>
+        <div class="metric-value price" id="precio-display">$0</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">INVENTARIO</div>
+        <div class="metric-value stock" id="stock-display">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="status">Sincronizando inventario...</div>
+
+  <script>
+    let inventarioDB = {};
+    let bloqueado = false;
+
+    // PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT
+    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwh3PPZ9kZ1zu2fsyTB9mxPwLlmLffot0rpF5gLaoXevHQurZtTDNIsvonRlLghoxif/exec";
+
+    async function cargarInventario() {
+      try {
+        const res = await fetch(URL_APPS_SCRIPT);
+        inventarioDB = await res.json();
+        document.getElementById('status').innerText = "✓ Inventario sincronizado en vivo";
+      } catch (err) {
+        document.getElementById('status').innerText = "⚠️ Error cargando inventario (Modo offline)";
+      }
+    }
+
+    function playBeep() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.08);
+    }
+
+    function onScanSuccess(codigo) {
+      if (bloqueado) return;
+      bloqueado = true;
+      playBeep();
+
+      // Limpiar código leído (por si trae espacios o formatos extraños)
+      codigo = codigo.trim();
+      document.getElementById('codigo-display').innerText = `Cód: ${codigo}`;
+
+      const item = inventarioDB[codigo];
+      if (item) {
+        document.getElementById('producto-display').innerText = item.producto;
+        document.getElementById('precio-display').innerText = `$${item.precio.toLocaleString('es-CO')}`;
+        document.getElementById('stock-display').innerText = item.stock;
+      } else {
+        document.getElementById('producto-display').innerText = "❌ Producto no encontrado";
+        document.getElementById('precio-display').innerText = "-";
+        document.getElementById('stock-display').innerText = "-";
+      }
+
+      setTimeout(() => { bloqueado = false; }, 1500); // Debounce de 1.5s
+    }
+
+    const scanner = new Html5Qrcode("reader");
+    scanner.start(
+      { facingMode: "environment" }, 
+      { 
+        fps: 20, 
+        qrbox: { width: 260, height: 140 },
+        formatsToSupport: [ 
+          Html5QrcodeSupportedFormats.EAN_13, 
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.UPC_A
+        ]
+      }, 
+      onScanSuccess
+    ).catch(err => {
+      document.getElementById('status').innerText = "Error de cámara: Asegure permisos HTTPS o localhost";
+    });
+
+    cargarInventario();
+  </script>
+</body>
+</html>
