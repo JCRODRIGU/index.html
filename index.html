@@ -30,14 +30,12 @@
       position: relative;
     }
 
-    /* ESTILOS CLAVE: Forzar que el video se vea claro y eliminar capas oscuras o cuadros negros molestos */
     #reader video {
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
     }
     
-    /* Ocultar elementos de interfaz predeterminados molestos que añade la librería */
     #reader__dashboard_section, 
     #reader__header_fps,
     #html5-qrcode-anchor-scan-type-change {
@@ -125,7 +123,7 @@
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Conectado (Cámara limpia activa)";
+        document.getElementById('status').innerText = "✓ Conectado (Listo para escanear)";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -181,7 +179,6 @@
 
     const html5QrCode = new Html5Qrcode("reader");
     
-    // Configuración limpia sin restricciones de qrbox restrictivas que oscurecen la vista
     const config = {
       fps: 20,
       aspectRatio: 1.0,
@@ -194,21 +191,17 @@
       ]
     };
 
-    const constraints = {
-      facingMode: "environment",
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    };
-
+    // Inicialización directa segura para iOS sin forzar restricciones de ancho/alto
     html5QrCode.start(
-      constraints, 
+      { facingMode: "environment" }, 
       config, 
       onScanSuccess,
       (errorMessage) => {
         // Ignora errores por cuadro vacío
       }
     ).catch(err => {
-      document.getElementById('status').innerText = "Error de cámara: Verifique permisos o use HTTPS";
+      // Muestra el error exacto que devuelve el navegador para identificarlo de inmediato
+      document.getElementById('status').innerText = "Error: " + (err.message || err);
     });
 
     cargarInventario();
