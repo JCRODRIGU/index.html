@@ -17,14 +17,26 @@
       align-items: center;
     }
     h2 { margin: 8px 0; color: #fff; font-size: 1.2rem; text-align: center; }
+    
+    /* CORRECCIÓN: Se añade altura fija y posición para forzar que el visor sea visible */
     #reader {
       width: 100%;
       max-width: 400px;
+      height: 320px; 
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       background: #000;
+      border: 2px solid #333;
     }
+
+    /* Estilo para asegurar que el video interno ocupe todo el espacio del lector */
+    #reader video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+
     .card {
       margin-top: 16px;
       width: 100%;
@@ -106,7 +118,7 @@
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Conectado (Escáner de alta velocidad)";
+        document.getElementById('status').innerText = "✓ Conectado (Visor activo)";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -162,10 +174,9 @@
 
     const html5QrCode = new Html5Qrcode("reader");
     
-    // Configuración con caja amplia y fluidez de 10 cuadros por segundo ligeros
     const config = {
-      fps: 10,
-      qrbox: { width: 300, height: 150 },
+      fps: 15,
+      qrbox: { width: 260, height: 130 },
       aspectRatio: 1.0,
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
@@ -176,7 +187,6 @@
       ]
     };
 
-    // Restricción estricta de video ligera para evitar el cuello de botella en iPhone
     const constraints = {
       facingMode: "environment",
       width: { ideal: 640 },
@@ -188,7 +198,7 @@
       config, 
       onScanSuccess,
       (errorMessage) => {
-        // Ignora errores por cuadro vacío para mantener el rendimiento fluido
+        // Ignora errores por cuadro vacío
       }
     ).catch(err => {
       document.getElementById('status').innerText = "Error de cámara: Verifique permisos o use HTTPS";
