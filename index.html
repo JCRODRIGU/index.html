@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Lector Móvil - Logos POS</title>
-  <!-- Cargamos Quagga2: Especializado en códigos de barras 1D de productos/libros -->
   <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <style>
     body {
@@ -31,14 +30,12 @@
       position: relative;
     }
 
-    /* Forzamos que el video ocupe todo el espacio */
     #scanner-container video, #scanner-container canvas {
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
     }
 
-    /* Guía visual en pantalla para apuntar el código */
     .laser-line {
       position: absolute;
       top: 50%;
@@ -129,13 +126,13 @@
     let bloqueado = false;
     let resetTimer = null;
 
-    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwAUVuiYfHxiMCJ-RQg_ss2VPm08zsKUSd60p8XxocOsT7vv2b4_usAavp65RMddyIb/exec";
+    const URL_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbw8Fc6omb5UY4-qEB2aGaw-nP2o8eFmX66iu1jLKu9yUXgWKGyIuLavrgEFoyBuvWnS/exec";
 
     async function cargarInventario() {
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Conectado (Motor Quagga2 Activo)";
+        document.getElementById('status').innerText = "✓ Listo para escanear y registrar";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -164,6 +161,21 @@
       bloqueado = false;
     }
 
+    async function guardarEnHoja(data) {
+      try {
+        document.getElementById('status').innerText = "⏳ Registrando en Sheets...";
+        await fetch(URL_APPS_SCRIPT, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        document.getElementById('status').innerText = "✓ Registrado correctamente en Sheets";
+      } catch (e) {
+        document.getElementById('status').innerText = "⚠️ No se pudo registrar el escaneo";
+      }
+    }
+
     function procesarCodigo(codigo) {
       if (bloqueado) return;
       bloqueado = true;
@@ -173,23 +185,36 @@
       document.getElementById('codigo-display').innerText = `LEÍDO: [${codigo}]`;
 
       const item = inventarioDB[codigo];
+      let datosEnvio = {
+        codigo: codigo,
+        producto: "NO ENCONTRADO EN BASE",
+        precio: 0,
+        stock: 0
+      };
+
       if (item) {
         document.getElementById('producto-display').innerText = item.producto;
         document.getElementById('precio-display').innerText = `$${item.precio.toLocaleString('es-CO')}`;
         document.getElementById('stock-display').innerText = item.stock;
+
+        datosEnvio.producto = item.producto;
+        datosEnvio.precio = item.precio;
+        datosEnvio.stock = item.stock;
       } else {
         document.getElementById('producto-display').innerText = "❌ No coincide con la base (INVENT)";
         document.getElementById('precio-display').innerText = "-";
         document.getElementById('stock-display').innerText = "-";
       }
 
+      // Enviar a Google Sheets en segundo plano
+      guardarEnHoja(datosEnvio);
+
       if (resetTimer) clearTimeout(resetTimer);
       resetTimer = setTimeout(() => {
         resetearPantalla();
-      }, 7000); 
+      }, 5000); 
     }
 
-    // Inicialización del motor Quagga2 optimizado para iPhone/Android
     function iniciarEscaner() {
       Quagga.init({
         inputStream: {
@@ -226,7 +251,6 @@
         Quagga.start();
       });
 
-      // Evento al detectar un código válido
       Quagga.onDetected(function(result) {
         if (result && result.codeResult && result.codeResult.code) {
           procesarCodigo(result.codeResult.code);
