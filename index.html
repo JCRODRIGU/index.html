@@ -2,9 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Lector Móvil - Logos POS</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <!-- Cargamos Quagga2: Especializado en códigos de barras 1D de productos/libros -->
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2/dist/quagga.min.js"></script>
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -18,10 +19,10 @@
     }
     h2 { margin: 8px 0; color: #fff; font-size: 1.2rem; text-align: center; }
     
-    #reader {
+    #scanner-container {
       width: 100%;
       max-width: 400px;
-      height: 320px;
+      height: 280px;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
@@ -30,16 +31,24 @@
       position: relative;
     }
 
-    #reader video {
+    /* Forzamos que el video ocupe todo el espacio */
+    #scanner-container video, #scanner-container canvas {
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
     }
-    
-    #reader__dashboard_section, 
-    #reader__header_fps,
-    #html5-qrcode-anchor-scan-type-change {
-      display: none !important;
+
+    /* Guía visual en pantalla para apuntar el código */
+    .laser-line {
+      position: absolute;
+      top: 50%;
+      left: 10%;
+      width: 80%;
+      height: 2px;
+      background: rgba(255, 0, 0, 0.8);
+      box-shadow: 0 0 8px red;
+      z-index: 10;
+      pointer-events: none;
     }
 
     .card {
@@ -92,11 +101,14 @@
 <body>
 
   <h2>Librería Cristiana Logos</h2>
-  <div id="reader"></div>
+  
+  <div id="scanner-container">
+    <div class="laser-line"></div>
+  </div>
 
   <div class="card">
     <div class="barcode-badge" id="codigo-display">Esperando escaneo...</div>
-    <div class="product-title" id="producto-display">Apunta la cámara al código</div>
+    <div class="product-title" id="producto-display">Cruza la línea roja sobre el código</div>
     
     <div class="metrics-grid">
       <div class="metric-box">
@@ -123,7 +135,7 @@
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Sistema listo para escanear";
+        document.getElementById('status').innerText = "✓ Conectado (Motor Quagga2 Activo)";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -146,13 +158,13 @@
 
     function resetearPantalla() {
       document.getElementById('codigo-display').innerText = "Esperando escaneo...";
-      document.getElementById('producto-display').innerText = "Apunta la cámara al código";
+      document.getElementById('producto-display').innerText = "Cruza la línea roja sobre el código";
       document.getElementById('precio-display').innerText = "$0";
       document.getElementById('stock-display').innerText = "0";
       bloqueado = false;
     }
 
-    function onScanSuccess(codigo) {
+    function procesarCodigo(codigo) {
       if (bloqueado) return;
       bloqueado = true;
       playBeep();
@@ -174,36 +186,56 @@
       if (resetTimer) clearTimeout(resetTimer);
       resetTimer = setTimeout(() => {
         resetearPantalla();
-      }, 10000); 
+      }, 7000); 
     }
 
-    const html5QrCode = new Html5Qrcode("reader");
-    
-    // Configuración con alta frecuencia de lectura y tolerancia amplia de formatos
-    const config = {
-      fps: 25,
-      aspectRatio: 1.0,
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E
-      ]
-    };
+    // Inicialización del motor Quagga2 optimizado para iPhone/Android
+    function iniciarEscaner() {
+      Quagga.init({
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#scanner-container'),
+          constraints: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        },
+        locator: {
+          patchSize: "medium",
+          halfSample: true
+        },
+        numOfWorkers: 2,
+        frequency: 10,
+        decoder: {
+          readers: [
+            "ean_reader",
+            "ean_8_reader",
+            "code_128_reader",
+            "upc_reader",
+            "upc_e_reader"
+          ]
+        },
+        locate: true
+      }, function(err) {
+        if (err) {
+          document.getElementById('status').innerText = "Error iniciando cámara: " + err;
+          return;
+        }
+        Quagga.start();
+      });
 
-    html5QrCode.start(
-      { facingMode: "environment" }, 
-      config, 
-      onScanSuccess,
-      (errorMessage) => {
-        // Ignora errores por cuadro vacío en tiempo real
-      }
-    ).catch(err => {
-      document.getElementById('status').innerText = "Error de cámara: " + err;
-    });
+      // Evento al detectar un código válido
+      Quagga.onDetected(function(result) {
+        if (result && result.codeResult && result.codeResult.code) {
+          procesarCodigo(result.codeResult.code);
+        }
+      });
+    }
 
     cargarInventario();
+    iniciarEscaner();
   </script>
 </body>
 </html>
