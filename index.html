@@ -21,7 +21,7 @@
     #reader {
       width: 100%;
       max-width: 400px;
-      height: 340px;
+      height: 320px;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
@@ -123,7 +123,7 @@
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Conectado (Listo para escanear)";
+        document.getElementById('status').innerText = "✓ Sistema listo para escanear";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -179,8 +179,9 @@
 
     const html5QrCode = new Html5Qrcode("reader");
     
+    // Configuración con alta frecuencia de lectura y tolerancia amplia de formatos
     const config = {
-      fps: 20,
+      fps: 25,
       aspectRatio: 1.0,
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
@@ -191,17 +192,15 @@
       ]
     };
 
-    // Inicialización directa segura para iOS sin forzar restricciones de ancho/alto
     html5QrCode.start(
       { facingMode: "environment" }, 
       config, 
       onScanSuccess,
       (errorMessage) => {
-        // Ignora errores por cuadro vacío
+        // Ignora errores por cuadro vacío en tiempo real
       }
     ).catch(err => {
-      // Muestra el error exacto que devuelve el navegador para identificarlo de inmediato
-      document.getElementById('status').innerText = "Error: " + (err.message || err);
+      document.getElementById('status').innerText = "Error de cámara: " + err;
     });
 
     cargarInventario();
