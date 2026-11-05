@@ -106,7 +106,7 @@
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Conectado (Escáner optimizado)";
+        document.getElementById('status').innerText = "✓ Conectado (Modo iOS Compatible)";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -162,14 +162,11 @@
 
     const html5QrCode = new Html5Qrcode("reader");
     
-    // Configuración optimizada para lectura rápida en milisegundos
+    // Configuración estable estándar compatible con Safari y Chrome en iPhone
     const config = {
-      fps: 30, // Máxima fluidez de cuadros por segundo
-      qrbox: { width: 320, height: 160 }, // Caja un poco más amplia para facilitar el enfoque
+      fps: 15,
+      qrbox: { width: 280, height: 140 },
       aspectRatio: 1.0,
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true // Utiliza la API nativa del navegador/móvil si está disponible (muchísimo más rápido)
-      },
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
@@ -179,22 +176,16 @@
       ]
     };
 
-    // Forzamos resolución moderada (HD 720p) para evitar sobrecargar el procesador del celular
-    const constraints = {
-      facingMode: "environment",
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    };
-
+    // Inicialización directa pidiendo la cámara trasera sin restricciones forzadas de resolución
     html5QrCode.start(
-      constraints, 
+      { facingMode: "environment" }, 
       config, 
       onScanSuccess,
       (errorMessage) => {
-        // Ignora errores por cuadro vacío
+        // Ignora errores de cuadro vacío
       }
     ).catch(err => {
-      document.getElementById('status').innerText = "Error de cámara: Verifique permisos del navegador";
+      document.getElementById('status').innerText = "Error: Asegúrate de abrir la página por HTTPS o Safari";
     });
 
     cargarInventario();
