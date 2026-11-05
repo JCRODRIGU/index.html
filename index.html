@@ -106,7 +106,7 @@
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Conectado (Cámara trasera fija)";
+        document.getElementById('status').innerText = "✓ Conectado (Escáner optimizado)";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -154,20 +154,22 @@
         document.getElementById('stock-display').innerText = "-";
       }
 
-      // Reiniciar la pantalla automáticamente después de 10 segundos para el siguiente escaneo
       if (resetTimer) clearTimeout(resetTimer);
       resetTimer = setTimeout(() => {
         resetearPantalla();
       }, 10000); 
     }
 
-    // Instancia directa para fijar la cámara trasera sin menús de selección
     const html5QrCode = new Html5Qrcode("reader");
     
+    // Configuración optimizada para lectura rápida en milisegundos
     const config = {
-      fps: 25,
-      qrbox: { width: 280, height: 140 },
+      fps: 30, // Máxima fluidez de cuadros por segundo
+      qrbox: { width: 320, height: 160 }, // Caja un poco más amplia para facilitar el enfoque
       aspectRatio: 1.0,
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true // Utiliza la API nativa del navegador/móvil si está disponible (muchísimo más rápido)
+      },
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
@@ -177,12 +179,19 @@
       ]
     };
 
+    // Forzamos resolución moderada (HD 720p) para evitar sobrecargar el procesador del celular
+    const constraints = {
+      facingMode: "environment",
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    };
+
     html5QrCode.start(
-      { facingMode: "environment" }, 
+      constraints, 
       config, 
       onScanSuccess,
       (errorMessage) => {
-        // Ignora errores por cuadro vacío en tiempo real
+        // Ignora errores por cuadro vacío
       }
     ).catch(err => {
       document.getElementById('status').innerText = "Error de cámara: Verifique permisos del navegador";
