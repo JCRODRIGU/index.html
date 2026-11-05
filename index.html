@@ -18,23 +18,30 @@
     }
     h2 { margin: 8px 0; color: #fff; font-size: 1.2rem; text-align: center; }
     
-    /* CORRECCIÓN: Se añade altura fija y posición para forzar que el visor sea visible */
     #reader {
       width: 100%;
       max-width: 400px;
-      height: 320px; 
+      height: 340px;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
       background: #000;
       border: 2px solid #333;
+      position: relative;
     }
 
-    /* Estilo para asegurar que el video interno ocupe todo el espacio del lector */
+    /* ESTILOS CLAVE: Forzar que el video se vea claro y eliminar capas oscuras o cuadros negros molestos */
     #reader video {
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
+    }
+    
+    /* Ocultar elementos de interfaz predeterminados molestos que añade la librería */
+    #reader__dashboard_section, 
+    #reader__header_fps,
+    #html5-qrcode-anchor-scan-type-change {
+      display: none !important;
     }
 
     .card {
@@ -118,7 +125,7 @@
       try {
         const res = await fetch(URL_APPS_SCRIPT);
         inventarioDB = await res.json();
-        document.getElementById('status').innerText = "✓ Conectado (Visor activo)";
+        document.getElementById('status').innerText = "✓ Conectado (Cámara limpia activa)";
       } catch (err) {
         document.getElementById('status').innerText = "⚠️ Error descargando inventario";
       }
@@ -174,9 +181,9 @@
 
     const html5QrCode = new Html5Qrcode("reader");
     
+    // Configuración limpia sin restricciones de qrbox restrictivas que oscurecen la vista
     const config = {
-      fps: 15,
-      qrbox: { width: 260, height: 130 },
+      fps: 20,
       aspectRatio: 1.0,
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
@@ -189,8 +196,8 @@
 
     const constraints = {
       facingMode: "environment",
-      width: { ideal: 640 },
-      height: { ideal: 480 }
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
     };
 
     html5QrCode.start(
